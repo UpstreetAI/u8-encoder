@@ -1,7 +1,7 @@
 {
   "name": "u8-encoder",
   "version": "0.0.1",
-  "main": "encoding.mjs",
+  "main": "u8.ts",
   "devDependencies": {
     "alea": "^1.0.1"
   }
