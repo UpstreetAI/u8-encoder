@@ -13,6 +13,7 @@ const ADDENDUM_TYPES = (() => {
   let iota = 0;
   const result = new Map();
   result.set(Uint8Array, ++iota);
+  result.set(Uint8ClampedArray, ++iota);
   result.set(Uint16Array, ++iota);
   result.set(Uint32Array, ++iota);
   result.set(Int8Array, ++iota);
@@ -30,8 +31,6 @@ const ADDENDUM_TYPES = (() => {
     result.set(ImageBitmap, imageIota);
   }
 
-  result.set(Uint8ClampedArray, ++iota);
-
   return result;
 })();
 const ADDENDUM_CONSTRUCTORS = (() => {
@@ -41,6 +40,7 @@ const ADDENDUM_CONSTRUCTORS = (() => {
   return [
     null, // start at 1
     _construct(Uint8Array),
+    _construct(Uint8ClampedArray),
     _construct(Uint16Array),
     _construct(Uint32Array),
     _construct(Int8Array),
@@ -57,7 +57,6 @@ const ADDENDUM_CONSTRUCTORS = (() => {
       const imageData = new ImageData(data, width, height);
       return imageData;
     },
-    _construct(Uint8ClampedArray),
   ];
 })();
 const ADDENDUM_SERIALIZERS = (() => {
@@ -103,6 +102,7 @@ const ADDENDUM_SERIALIZERS = (() => {
   return [
     null, // start at 1
     _serializedTypedArray, // Uint8Array
+    _serializedTypedArray, // Uint8ClampedArray
     _serializedTypedArray, // Uint16Array
     _serializedTypedArray, // Uint32Array
     _serializedTypedArray, // Int8Array
@@ -112,7 +112,6 @@ const ADDENDUM_SERIALIZERS = (() => {
     _serializedTypedArray, // Float64Array
     _serializeArrayBuffer, // ArrayBuffer
     _serializeImage, // ImageData
-    _serializedTypedArray, // Uint8ClampedArray
   ];
 })();
 
@@ -122,6 +121,7 @@ let textUint8Array = new Uint8Array(4 * 1024 * 1024); // 4 MB
 
 const encodableConstructors = [
   Uint8Array,
+  Uint8ClampedArray,
   Uint16Array,
   Uint32Array,
   Int8Array,
@@ -134,7 +134,6 @@ const encodableConstructors = [
   HTMLCanvasElement,
   ImageData,
   ImageBitmap,
-  Uint8ClampedArray,
 ];
 const _isAddendumEncodable = o =>
   encodableConstructors.includes(
