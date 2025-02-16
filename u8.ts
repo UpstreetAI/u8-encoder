@@ -147,7 +147,7 @@ const _isAddendumEncodable = o =>
     o?.constructor
   );
 const nullUint8Array = textEncoder.encode('null');
-export function zbencode(o) {
+export function encode(o) {
   const addendums: Serializer[] = [];
   const addendumIndexes: number[] = [];
   const addendumTypes: number[] = [];
@@ -257,10 +257,10 @@ export function zbencode(o) {
   }
   return uint8Array;
 }
-export function zbdecode(uint8Array) {
-  // console.log('zbdecode 1', uint8Array, new Error().stack);
+export function decode(uint8Array) {
+  // console.log('decode 1', uint8Array, new Error().stack);
   const dataView = new DataView(uint8Array.buffer, uint8Array.byteOffset, uint8Array.byteLength);
-  // console.log('zbdecode 2', dataView, new Error().stack);
+  // console.log('decode 2', dataView, new Error().stack);
 
   let index = 0;
   const sbLength = dataView.getUint32(index, true);
@@ -345,6 +345,6 @@ export function zbdecode(uint8Array) {
   }
 }
 
-export function zbclone(o) {
-  return zbdecode(zbencode(o));
+export function clone(o) {
+  return decode(encode(o));
 }
