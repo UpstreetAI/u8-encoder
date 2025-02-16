@@ -9,9 +9,10 @@ const align = (v, N) => {
 };
 const align4 = v => align(v, 4);
 
+// enum
 const ADDENDUM_TYPES = (() => {
   let iota = 0;
-  const result = new Map();
+  const result = new Map<any, number>();
   result.set(Uint8Array, ++iota);
   result.set(Uint8ClampedArray, ++iota);
   result.set(Uint16Array, ++iota);
@@ -33,7 +34,10 @@ const ADDENDUM_TYPES = (() => {
 
   return result;
 })();
-const ADDENDUM_CONSTRUCTORS = (() => {
+type TypedArrayConstructor = (buffer: ArrayBuffer, offset: number, byteLength: number) => any;
+const ADDENDUM_CONSTRUCTORS:
+  Record<number, TypedArrayConstructor | null>
+= (() => {
   const _construct = constructor =>
     (buffer, offset, byteLength) =>
       new constructor(buffer, offset, byteLength / constructor.BYTES_PER_ELEMENT)
@@ -59,46 +63,49 @@ const ADDENDUM_CONSTRUCTORS = (() => {
     },
   ];
 })();
-const ADDENDUM_SERIALIZERS = (() => {
-  const _serializedTypedArray = (typedArray, uint8Array, index) => {
-    uint8Array.set(new Uint8Array(typedArray.buffer, typedArray.byteOffset, typedArray.byteLength), index);
-  };
-  _serializedTypedArray.normalize = a => a;
-  _serializedTypedArray.getSize = typedArray => typedArray.byteLength;
-  
-  const _serializeArrayBuffer = (arrayBuffer, uint8Array, index) => {
-    uint8Array.set(new Uint8Array(arrayBuffer), index);
-  };
-  _serializeArrayBuffer.normalize = a => a;
-  _serializeArrayBuffer.getSize = arrayBuffer => arrayBuffer.byteLength;
-
-  const _serializeImage = (imageData, uint8Array, index) => {
-    const dataView = new DataView(uint8Array.buffer, index);
-    dataView.setUint32(0, imageData.width, true);
-    dataView.setUint32(4, imageData.height, true);
-    const srcData = new Uint8Array(imageData.data.buffer, imageData.data.byteOffset, imageData.data.byteLength);
-    uint8Array.set(srcData, index + 8);
-  };
-  _serializeImage.normalize = image => {
-    if (!(image instanceof ImageData)) {
-      // draw to canvas to convert to ImageData
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext('2d')!;
-      context.drawImage(image, 0, 0);
-      image = context.getImageData(0, 0, image.width, image.height);
-    }
-    return image;
-  };
-  _serializeImage.getSize = imageData => {
-    const size = 8 + imageData.data.byteLength;
-    // if (align4(imageData.data.byteLength) !== imageData.data.byteLength) {
-    //   throw new Error('invalid image data size');
-    // }
-    return size;
-  };
-  
+const _serializedTypedArray = (typedArray, uint8Array, index) => {
+  uint8Array.set(new Uint8Array(typedArray.buffer, typedArray.byteOffset, typedArray.byteLength), index);
+};
+_serializedTypedArray.normalize = a => a;
+_serializedTypedArray.getSize = typedArray => typedArray.byteLength;
+const _serializeArrayBuffer = (arrayBuffer, uint8Array, index) => {
+  uint8Array.set(new Uint8Array(arrayBuffer), index);
+};
+_serializeArrayBuffer.normalize = a => a;
+_serializeArrayBuffer.getSize = arrayBuffer => arrayBuffer.byteLength;
+const _serializeImage = (imageData, uint8Array, index) => {
+  const dataView = new DataView(uint8Array.buffer, index);
+  dataView.setUint32(0, imageData.width, true);
+  dataView.setUint32(4, imageData.height, true);
+  const srcData = new Uint8Array(imageData.data.buffer, imageData.data.byteOffset, imageData.data.byteLength);
+  uint8Array.set(srcData, index + 8);
+};
+_serializeImage.normalize = image => {
+  if (!(image instanceof ImageData)) {
+    // draw to canvas to convert to ImageData
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    image = context.getImageData(0, 0, image.width, image.height);
+  }
+  return image;
+};
+_serializeImage.getSize = imageData => {
+  const size = 8 + imageData.data.byteLength;
+  // if (align4(imageData.data.byteLength) !== imageData.data.byteLength) {
+  //   throw new Error('invalid image data size');
+  // }
+  return size;
+};
+type Serializer = ((typedArray: any, uint8Array: Uint8Array, index: number) => void) & {
+  normalize: (a: any) => any;
+  getSize: (a: any) => number;
+};
+const ADDENDUM_SERIALIZERS:
+  Record<number, Serializer | null>
+= (() => {
   return [
     null, // start at 1
     _serializedTypedArray, // Uint8Array
@@ -141,14 +148,15 @@ const _isAddendumEncodable = o =>
   );
 const nullUint8Array = textEncoder.encode('null');
 export function zbencode(o) {
-  const addendums = [];
-  const addendumIndexes = [];
-  const addendumTypes = [];
+  const addendums: Serializer[] = [];
+  const addendumIndexes: number[] = [];
+  const addendumTypes: number[] = [];
   const _getSb = () => {
     if (_isAddendumEncodable(o)) { // common fast path
       addendums.push(o);
       addendumIndexes.push(1);
-      addendumTypes.push(ADDENDUM_TYPES.get(o.constructor));
+      const addendumType = ADDENDUM_TYPES.get(o.constructor)!;
+      addendumTypes.push(addendumType);
       return nullUint8Array;
     } else {
       let recursionIndex = 0;
@@ -157,7 +165,7 @@ export function zbencode(o) {
         if (_isAddendumEncodable(o)) {
           addendums.push(o);
           addendumIndexes.push(recursionIndex);
-          const addendumType = ADDENDUM_TYPES.get(o.constructor);
+          const addendumType = ADDENDUM_TYPES.get(o.constructor)!;
           addendumTypes.push(addendumType)
           return null;
         } else {
@@ -197,6 +205,9 @@ export function zbencode(o) {
     // totalSize += addendum.byteLength; // data
     const addendumType = addendumTypes[i];
     const SerializerCons = ADDENDUM_SERIALIZERS[addendumType];
+    if (!SerializerCons) {
+      throw new Error(`failed to find serializer for ${addendumType}`);
+    }
     const normalizedAddendum = SerializerCons.normalize(addendum);
     addendums[i] = normalizedAddendum;
     const addendumByteLength = SerializerCons.getSize(normalizedAddendum);
@@ -232,6 +243,9 @@ export function zbencode(o) {
       index += Uint32Array.BYTES_PER_ELEMENT;
       
       const SerializerCons = ADDENDUM_SERIALIZERS[addendumType];
+      if (!SerializerCons) {
+        throw new Error(`failed to find serializer for ${addendumType}`);
+      }
       const addendumByteLength = SerializerCons.getSize(addendum);
 
       dataView.setUint32(index, addendumByteLength, true);
@@ -275,9 +289,9 @@ export function zbdecode(uint8Array) {
     index += Uint32Array.BYTES_PER_ELEMENT;
     
     const TypedArrayCons = ADDENDUM_CONSTRUCTORS[addendumType];
-    /* if (!TypedArrayCons) {
-      console.warn('failed to find typed array cons for', addendumType);
-    } */
+    if (!TypedArrayCons) {
+      throw new Error(`failed to find typed array cons for ${addendumType}`);
+    }
     const addendum = TypedArrayCons(
       uint8Array.buffer,
       uint8Array.byteOffset + index,
