@@ -140,7 +140,7 @@ const _isAddendumEncodable = o =>
     o?.constructor
   );
 const nullUint8Array = textEncoder.encode('null');
-function zbencode(o) {
+export function zbencode(o) {
   const addendums = [];
   const addendumIndexes = [];
   const addendumTypes = [];
@@ -196,10 +196,10 @@ function zbencode(o) {
     
     // totalSize += addendum.byteLength; // data
     const addendumType = addendumTypes[i];
-    const Serializer = ADDENDUM_SERIALIZERS[addendumType];
-    const normalizedAddendum = Serializer.normalize(addendum);
+    const SerializerCons = ADDENDUM_SERIALIZERS[addendumType];
+    const normalizedAddendum = SerializerCons.normalize(addendum);
     addendums[i] = normalizedAddendum;
-    const addendumByteLength = Serializer.getSize(normalizedAddendum);
+    const addendumByteLength = SerializerCons.getSize(normalizedAddendum);
     totalSize += align4(addendumByteLength);
   }
   
@@ -231,19 +231,19 @@ function zbencode(o) {
       dataView.setUint32(index, addendumType, true);
       index += Uint32Array.BYTES_PER_ELEMENT;
       
-      const Serializer = ADDENDUM_SERIALIZERS[addendumType];
-      const addendumByteLength = Serializer.getSize(addendum);
+      const SerializerCons = ADDENDUM_SERIALIZERS[addendumType];
+      const addendumByteLength = SerializerCons.getSize(addendum);
 
       dataView.setUint32(index, addendumByteLength, true);
       index += Uint32Array.BYTES_PER_ELEMENT;
 
-      Serializer(addendum, uint8Array, index);
+      SerializerCons(addendum, uint8Array, index);
       index += align4(addendumByteLength);
     }
   }
   return uint8Array;
 }
-function zbdecode(uint8Array) {
+export function zbdecode(uint8Array) {
   // console.log('zbdecode 1', uint8Array, new Error().stack);
   const dataView = new DataView(uint8Array.buffer, uint8Array.byteOffset, uint8Array.byteLength);
   // console.log('zbdecode 2', dataView, new Error().stack);
@@ -331,12 +331,6 @@ function zbdecode(uint8Array) {
   }
 }
 
-function zbclone(o) {
+export function zbclone(o) {
   return zbdecode(zbencode(o));
 }
-
-export {
-  zbencode,
-  zbdecode,
-  zbclone,
-};
