@@ -1,8 +1,13 @@
 {
   "name": "u8-encoder",
   "version": "0.0.3",
-  "main": "u8.ts",
+  "main": "./dist/u8.js",
+  "types": "./dist/u8.d.ts",
   "devDependencies": {
-    "alea": "^1.0.1"
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3"
+  },
+  "scripts": {
+    "build": "tsup ./u8.ts --dts --format esm --out-dir ./dist"
   }
 }
