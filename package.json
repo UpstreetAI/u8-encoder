@@ -1,6 +1,6 @@
 {
   "name": "u8-encoder",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "./dist/u8.mjs",
   "types": "./dist/u8.d.mts",
   "devDependencies": {
