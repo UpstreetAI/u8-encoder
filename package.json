@@ -1,8 +1,8 @@
 {
   "name": "u8-encoder",
   "version": "0.0.5",
-  "main": "./dist/u8.js",
-  "types": "./dist/u8.d.ts",
+  "main": "./dist/u8.mjs",
+  "types": "./dist/u8.d.mts",
   "devDependencies": {
     "tsup": "^8.3.6",
     "typescript": "^5.7.3"
