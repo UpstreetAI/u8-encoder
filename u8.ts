@@ -147,7 +147,7 @@ const _isAddendumEncodable = o =>
     o?.constructor
   );
 const nullUint8Array = textEncoder.encode('null');
-export function encode(o: any): Uint8Array {
+export function encode(o: any): Uint8Array<ArrayBuffer> {
   const addendums: Serializer[] = [];
   const addendumIndexes: number[] = [];
   const addendumTypes: number[] = [];
