@@ -147,7 +147,7 @@ const _isAddendumEncodable = o =>
     o?.constructor
   );
 const nullUint8Array = textEncoder.encode('null');
-export function encode(o) {
+export function encode(o: any): Uint8Array {
   const addendums: Serializer[] = [];
   const addendumIndexes: number[] = [];
   const addendumTypes: number[] = [];
@@ -257,7 +257,7 @@ export function encode(o) {
   }
   return uint8Array;
 }
-export function decode(uint8Array) {
+export function decode(uint8Array: Uint8Array): any {
   // console.log('decode 1', uint8Array, new Error().stack);
   const dataView = new DataView(uint8Array.buffer, uint8Array.byteOffset, uint8Array.byteLength);
   // console.log('decode 2', dataView, new Error().stack);
@@ -345,6 +345,7 @@ export function decode(uint8Array) {
   }
 }
 
-export function clone(o) {
+export function clone<T>(o: T): T;
+export function clone(o: any): any {
   return decode(encode(o));
 }

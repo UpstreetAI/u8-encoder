@@ -1,13 +1,22 @@
 {
   "name": "u8-encoder",
   "version": "0.0.6",
-  "main": "./dist/u8.mjs",
-  "types": "./dist/u8.d.mts",
+  "main": "./dist/u8.cjs",
+  "module": "./dist/u8.mjs",
+  "types": "./dist/u8.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/u8.d.ts",
+      "import": "./dist/u8.mjs",
+      "require": "./dist/u8.cjs",
+      "default": "./dist/u8.mjs"
+    }
+  },
   "devDependencies": {
     "tsup": "^8.3.6",
     "typescript": "^5.7.3"
   },
   "scripts": {
-    "build": "tsup ./u8.ts --dts --format esm --out-dir ./dist"
+    "build": "tsup ./u8.ts --clean --format esm,cjs --out-dir ./dist && tsc -p ./tsconfig.types.json"
   }
 }
