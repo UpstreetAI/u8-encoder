@@ -34,7 +34,7 @@ const ADDENDUM_TYPES = (() => {
 
   return result;
 })();
-type TypedArrayConstructor = (buffer: ArrayBuffer, offset: number, byteLength: number) => any;
+type TypedArrayConstructor = (buffer: ArrayBufferLike, offset: number, byteLength: number) => any;
 const ADDENDUM_CONSTRUCTORS:
   Record<number, TypedArrayConstructor | null>
 = (() => {
@@ -293,7 +293,7 @@ export function decode(uint8Array: Uint8Array): any {
       throw new Error(`failed to find typed array cons for ${addendumType}`);
     }
     const addendum = TypedArrayCons(
-      uint8Array.buffer,
+      uint8Array.buffer as ArrayBuffer,
       uint8Array.byteOffset + index,
       addendumByteLength
     );
