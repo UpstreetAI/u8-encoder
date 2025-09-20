@@ -48,12 +48,8 @@ var ADDENDUM_CONSTRUCTORS = (() => {
     _construct(Int32Array),
     _construct(Float32Array),
     _construct(Float64Array),
-    // ArrayBuffer: copy into a fresh ArrayBuffer even if source is SharedArrayBuffer
-    (buffer, offset, byteLength) => {
-      const out = new ArrayBuffer(byteLength);
-      new Uint8Array(out).set(new Uint8Array(buffer, offset, byteLength));
-      return out;
-    },
+    (buffer, offset, byteLength) => buffer.slice(offset, offset + byteLength),
+    // ArrayBuffer
     (buffer, offset, byteLength) => {
       const dataView = new DataView(buffer, offset, byteLength);
       const width = dataView.getUint32(0, true);
