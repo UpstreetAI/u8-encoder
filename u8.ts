@@ -32,6 +32,9 @@ const ADDENDUM_TYPES = (() => {
     result.set(ImageBitmap, imageIota);
   }
 
+  // Special case: `undefined` has no constructor, so store it directly as a key in the map.
+  result.set(undefined, ++iota);
+
   return result;
 })();
 type TypedArrayConstructor = (buffer: ArrayBufferLike, offset: number, byteLength: number) => any;
@@ -61,6 +64,7 @@ const ADDENDUM_CONSTRUCTORS:
       const imageData = new ImageData(data, width, height);
       return imageData;
     },
+    (_buffer, _offset, _byteLength) => undefined, // undefined (0-byte payload)
   ];
 })();
 const _serializedTypedArray = (typedArray, uint8Array, index) => {
@@ -73,6 +77,11 @@ const _serializeArrayBuffer = (arrayBuffer, uint8Array, index) => {
 };
 _serializeArrayBuffer.normalize = a => a;
 _serializeArrayBuffer.getSize = arrayBuffer => arrayBuffer.byteLength;
+const _serializeUndefined = (_u, _uint8Array, _index) => {
+  // 0-byte payload
+};
+_serializeUndefined.normalize = a => a;
+_serializeUndefined.getSize = _u => 0;
 const _serializeImage = (imageData, uint8Array, index) => {
   const dataView = new DataView(uint8Array.buffer, index);
   dataView.setUint32(0, imageData.width, true);
@@ -103,6 +112,15 @@ type Serializer = ((typedArray: any, uint8Array: Uint8Array, index: number) => v
   normalize: (a: any) => any;
   getSize: (a: any) => number;
 };
+
+type CanvasImageSourceLike = { width: number; height: number };
+type Addendum =
+  | ArrayBuffer
+  | ArrayBufferView
+  | ImageData
+  | CanvasImageSourceLike
+  | undefined
+  ;
 const ADDENDUM_SERIALIZERS:
   Record<number, Serializer | null>
 = (() => {
@@ -119,6 +137,7 @@ const ADDENDUM_SERIALIZERS:
     _serializedTypedArray, // Float64Array
     _serializeArrayBuffer, // ArrayBuffer
     _serializeImage, // ImageData
+    _serializeUndefined, // undefined
   ];
 })();
 
@@ -148,10 +167,16 @@ const _isAddendumEncodable = o =>
   );
 const nullUint8Array = textEncoder.encode('null');
 export function encode(o: any): Uint8Array<ArrayBuffer> {
-  const addendums: Serializer[] = [];
+  const addendums: Addendum[] = [];
   const addendumIndexes: number[] = [];
   const addendumTypes: number[] = [];
   const _getSb = () => {
+    if (o === undefined) {
+      addendums.push(undefined);
+      addendumIndexes.push(1);
+      addendumTypes.push(ADDENDUM_TYPES.get(undefined)!);
+      return nullUint8Array;
+    }
     if (_isAddendumEncodable(o)) { // common fast path
       addendums.push(o);
       addendumIndexes.push(1);
@@ -162,7 +187,12 @@ export function encode(o: any): Uint8Array<ArrayBuffer> {
       let recursionIndex = 0;
       const _recurseExtractAddendums = o => {
         recursionIndex++;
-        if (_isAddendumEncodable(o)) {
+        if (o === undefined) {
+          addendums.push(undefined);
+          addendumIndexes.push(recursionIndex);
+          addendumTypes.push(ADDENDUM_TYPES.get(undefined)!);
+          return null; // preserve key + traversal position
+        } else if (_isAddendumEncodable(o)) {
           addendums.push(o);
           addendumIndexes.push(recursionIndex);
           const addendumType = ADDENDUM_TYPES.get(o.constructor)!;
@@ -308,38 +338,38 @@ export function decode(uint8Array: Uint8Array): any {
   {
     let recursionIndex = 0;
     let currentAddendum = 0;
-    const _recurseBindAddendums = o => {
+    let root: any = j;
+    const _recurseBindAddendums = (parent: any, key: any, o: any): void => {
       recursionIndex++;
       
-      const addendumIndex = addendumIndexes[currentAddendum];
+      const addendumIndex =
+        currentAddendum < addendumIndexes.length
+          ? addendumIndexes[currentAddendum]
+          : -1;
       if (addendumIndex === recursionIndex) {
         const addendum = addendums[currentAddendum];
         currentAddendum++;
-        return addendum;
+        if (parent === null) {
+          root = addendum;
+        } else {
+          parent[key] = addendum;
+        }
+        return;
       } else if (Array.isArray(o)) {
         for (let i = 0; i < o.length; i++) {
-          const addendum = _recurseBindAddendums(o[i]);
-          if (addendum) {
-            o[i] = addendum;
-          }
+          _recurseBindAddendums(o, i, o[i]);
         }
       } else if (typeof o === 'object' && o !== null) {
         for (const k in o) {
-          const addendum = _recurseBindAddendums(o[k]);
-          if (addendum) {
-            o[k] = addendum;
-          }
+          _recurseBindAddendums(o, k, o[k]);
         }
       }
-      return null;
+      return;
     };
-    const j2 = _recurseBindAddendums(j);
-    if (j2 !== null) {
-      j = j2;
-    }
+    _recurseBindAddendums(null, null, root);
+    j = root;
     if (currentAddendum !== addendums.length) {
-      console.warn('did not bind all addendums', j, currentAddendum, addendums);
-      debugger;
+      throw new Error(`did not bind all addendums (bound ${currentAddendum}/${addendums.length})`);
     }
     return j;
   }
