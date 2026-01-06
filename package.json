@@ -1,6 +1,6 @@
 {
   "name": "u8-encoder",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "main": "./dist/u8.cjs",
   "module": "./dist/u8.mjs",
   "types": "./dist/u8.d.ts",
