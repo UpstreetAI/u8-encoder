@@ -57,6 +57,7 @@ var ADDENDUM_TYPES = (() => {
     result.set(ImageData, imageIota);
     result.set(ImageBitmap, imageIota);
   }
+  result.set(void 0, ++iota);
   return result;
 })();
 var ADDENDUM_CONSTRUCTORS = (() => {
@@ -82,7 +83,9 @@ var ADDENDUM_CONSTRUCTORS = (() => {
       const data = new Uint8ClampedArray(buffer, offset + 8, byteLength - 8);
       const imageData = new ImageData(data, width, height);
       return imageData;
-    }
+    },
+    (_buffer, _offset, _byteLength) => void 0
+    // undefined (0-byte payload)
   ];
 })();
 var _serializedTypedArray = (typedArray, uint8Array, index) => {
@@ -95,6 +98,10 @@ var _serializeArrayBuffer = (arrayBuffer, uint8Array, index) => {
 };
 _serializeArrayBuffer.normalize = (a) => a;
 _serializeArrayBuffer.getSize = (arrayBuffer) => arrayBuffer.byteLength;
+var _serializeUndefined = (_u, _uint8Array, _index) => {
+};
+_serializeUndefined.normalize = (a) => a;
+_serializeUndefined.getSize = (_u) => 0;
 var _serializeImage = (imageData, uint8Array, index) => {
   const dataView = new DataView(uint8Array.buffer, index);
   dataView.setUint32(0, imageData.width, true);
@@ -141,8 +148,10 @@ var ADDENDUM_SERIALIZERS = /* @__PURE__ */ (() => {
     // Float64Array
     _serializeArrayBuffer,
     // ArrayBuffer
-    _serializeImage
+    _serializeImage,
     // ImageData
+    _serializeUndefined
+    // undefined
   ];
 })();
 var textEncoder = new TextEncoder();
@@ -173,6 +182,12 @@ function encode(o) {
   const addendumIndexes = [];
   const addendumTypes = [];
   const _getSb = () => {
+    if (o === void 0) {
+      addendums.push(void 0);
+      addendumIndexes.push(1);
+      addendumTypes.push(ADDENDUM_TYPES.get(void 0));
+      return nullUint8Array;
+    }
     if (_isAddendumEncodable(o)) {
       addendums.push(o);
       addendumIndexes.push(1);
@@ -183,7 +198,12 @@ function encode(o) {
       let recursionIndex = 0;
       const _recurseExtractAddendums = (o2) => {
         recursionIndex++;
-        if (_isAddendumEncodable(o2)) {
+        if (o2 === void 0) {
+          addendums.push(void 0);
+          addendumIndexes.push(recursionIndex);
+          addendumTypes.push(ADDENDUM_TYPES.get(void 0));
+          return null;
+        } else if (_isAddendumEncodable(o2)) {
           addendums.push(o2);
           addendumIndexes.push(recursionIndex);
           const addendumType = ADDENDUM_TYPES.get(o2.constructor);
@@ -305,37 +325,34 @@ function decode(uint8Array) {
   {
     let recursionIndex = 0;
     let currentAddendum = 0;
-    const _recurseBindAddendums = (o) => {
+    let root = j;
+    const _recurseBindAddendums = (parent, key, o) => {
       recursionIndex++;
-      const addendumIndex = addendumIndexes[currentAddendum];
+      const addendumIndex = currentAddendum < addendumIndexes.length ? addendumIndexes[currentAddendum] : -1;
       if (addendumIndex === recursionIndex) {
         const addendum = addendums[currentAddendum];
         currentAddendum++;
-        return addendum;
+        if (parent === null) {
+          root = addendum;
+        } else {
+          parent[key] = addendum;
+        }
+        return;
       } else if (Array.isArray(o)) {
         for (let i = 0; i < o.length; i++) {
-          const addendum = _recurseBindAddendums(o[i]);
-          if (addendum) {
-            o[i] = addendum;
-          }
+          _recurseBindAddendums(o, i, o[i]);
         }
       } else if (typeof o === "object" && o !== null) {
         for (const k in o) {
-          const addendum = _recurseBindAddendums(o[k]);
-          if (addendum) {
-            o[k] = addendum;
-          }
+          _recurseBindAddendums(o, k, o[k]);
         }
       }
-      return null;
+      return;
     };
-    const j2 = _recurseBindAddendums(j);
-    if (j2 !== null) {
-      j = j2;
-    }
+    _recurseBindAddendums(null, null, root);
+    j = root;
     if (currentAddendum !== addendums.length) {
-      console.warn("did not bind all addendums", j, currentAddendum, addendums);
-      debugger;
+      throw new Error(`did not bind all addendums (bound ${currentAddendum}/${addendums.length})`);
     }
     return j;
   }
