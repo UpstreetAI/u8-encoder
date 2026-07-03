@@ -6,10 +6,14 @@
   "types": "./dist/u8.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/u8.d.ts",
-      "import": "./dist/u8.mjs",
-      "require": "./dist/u8.cjs",
-      "default": "./dist/u8.mjs"
+      "import": {
+        "types": "./dist/u8.d.mts",
+        "default": "./dist/u8.mjs"
+      },
+      "require": {
+        "types": "./dist/u8.d.ts",
+        "default": "./dist/u8.cjs"
+      }
     }
   },
   "devDependencies": {
@@ -18,7 +22,7 @@
     "vitest": "^4.1.5"
   },
   "scripts": {
-    "build": "tsup ./u8.ts --clean --format esm,cjs --out-dir ./dist && tsc -p ./tsconfig.types.json",
+    "build": "tsup",
     "test": "vitest run"
   }
 }
